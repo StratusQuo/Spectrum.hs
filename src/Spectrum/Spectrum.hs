@@ -4,17 +4,19 @@
 module Spectrum.Spectrum 
   ( module Spectrum.Capabilities
   , module Spectrum.Lexer
+  , module Spectrum.Colors -- ! Test
   , Printer(..)
   , makePrinter
   , Exn
   , Noexn
   , simpleSprintf
-  , yellow, red, green, bold, underline, strikethrough, bgRed
-  , rgb, hex, lightSteelBlue, colorName
-  , supportedColorLevel, defaultConfig
+  -- ! Removed for now, so Spectrum.Colors can be tested:
+  -- , yellow, red, green, bold, underline, strikethrough, bgRed
+  -- , rgb, hex, lightSteelBlue, colorName
   ) where
 
 import Spectrum.Capabilities
+import Spectrum.Colors -- ! Test
 import Spectrum.Lexer
 import Data.List (intercalate)
 import System.IO

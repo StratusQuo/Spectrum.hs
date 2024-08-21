@@ -15,6 +15,15 @@ main = do
   putStrLn $ red "Red text"
   putStrLn $ green "Green text"
 
+  -- Extended Tests
+
+  putStrLn $ red "This is red text"
+  putStrLn $ blue $ bold "This is bold blue text"
+  putStrLn $ fromName "deep-sky-blue-4a" "This is deep sky blue text"
+  putStrLn $ bgYellow $ black "Black text on yellow background"
+  putStrLn $ rgb 100 150 200 "Custom RGB color"
+  putStrLn $ hex "#FF5733" "Custom Hex color"
+
   -- Compound style tests
   putStrLn $ green (bold (underline "Bold underlined green text"))
   
