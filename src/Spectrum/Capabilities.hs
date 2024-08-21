@@ -1,16 +1,39 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
-module Spectrum.Capabilities where
+module Spectrum.Capabilities (
+  ColorLevel(..),
+  ColorLevelInfo(..),
+  NumericVersion(..),
+  Config(..),
+  parseNumericVersion,
+  envForceLevel,
+  inEnv,
+  hasEnvMatching,
+  windowsLevel,
+  teamcityLevel,
+  isRecognisedTermProgram,
+  itermLevel,
+  termProgramLevel,
+  termIs256Color,
+  termIs16Color,
+  isInCI,
+  supportedColorLevel,
+  supportedColorLevels,
+  defaultConfig,
+  envProviderOfMap,
+  osInfoProviderOfValues
+) where
 
-import Text.Regex.PCRE ((=~))
+import Text.Regex.TDFA ((=~~), (=~))
 import Data.Maybe (isJust, fromMaybe, isNothing)
 import qualified Data.Map.Strict as Map
-import Control.Monad (liftM2)
 import System.Environment (lookupEnv)
-import qualified System.Environment as SystemEnv
+--import qualified System.Environment as SystemEnv
 import System.Info (os)
 import System.Process (readProcess)
+import Text.Read (readMaybe)  -- Import readMaybe from Text.Read
 
 -- | Represents the level of color support
 data ColorLevel = Unsupported
@@ -37,7 +60,6 @@ data NumericVersion = NumericVersion
 -- | Environment provider interface
 class EnvProvider e where
   getEnvOpt :: e -> String -> IO (Maybe String)
-  getEnv :: e -> String -> IO String
 
 -- | OS information provider interface
 class OSInfoProvider o where
@@ -52,11 +74,12 @@ data Config = forall e o. (EnvProvider e, OSInfoProvider o) => Config
 
 -- | Parse a version string into a NumericVersion
 parseNumericVersion :: String -> Maybe NumericVersion
-parseNumericVersion s =
-  case s =~ "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)" :: Maybe (String, String, String, [(String, String)]) of
-    Just (_, _, _, [("major", major), ("minor", minor), ("patch", patch)]) ->
-      Just $ NumericVersion { major = read major, minor = read minor, patch = read patch }
-    _ -> Nothing
+parseNumericVersion s = do
+  (_, _, _, captures) <- s =~~ "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)" :: Maybe (String, String, String, [String])
+  major <- readMaybe (head captures) 
+  minor <- readMaybe (captures !! 1) -- Or (head $ tail captures)
+  patch <- readMaybe (captures !! 2) -- Or (head $ tail $ tail captures)
+  return $ NumericVersion { major, minor, patch }
 
 -- | Get the forced color level from environment
 envForceLevel :: EnvProvider e => e -> IO (Maybe ColorLevel)
@@ -65,7 +88,7 @@ envForceLevel e = do
   return $ case forceColor of
     Just "true" -> Just Basic
     Just "false" -> Just Unsupported
-    Just s -> case reads s of
+    Just s -> case (reads s :: [(Int, String)]) of
       [(0, "")] -> Just Unsupported
       [(1, "")] -> Just Basic
       [(2, "")] -> Just EightBit
@@ -86,8 +109,8 @@ hasEnvMatching e name value = do
 -- | Get the color level for Windows
 windowsLevel :: OSInfoProvider o => o -> IO ColorLevel
 windowsLevel o = do
-  osVersion <- osVersion o
-  return $ case osVersion >>= parseNumericVersion of
+  osWVersion <- osVersion o
+  return $ case osWVersion >>= parseNumericVersion of
     Just v | major v == 10 && minor v == 0 && patch v >= 14931 -> TrueColor
            | major v == 10 && minor v == 0 && patch v >= 10586 -> EightBit
            | major v == 10 && minor v > 0 -> TrueColor
@@ -146,7 +169,7 @@ isInCI e = or <$> sequence (map (inEnv e) ciEnvVars ++ [hasEnvMatching e "CI_NAM
 
 -- | Get the supported color level
 supportedColorLevel :: Config -> Bool -> IO ColorLevel
-supportedColorLevel (Config env os) isTTY = do
+supportedColorLevel (Config env osInfo) isTTY = do
   forceLevel <- envForceLevel env
   let minLevel = fromMaybe Unsupported forceLevel
 
@@ -161,10 +184,10 @@ supportedColorLevel (Config env os) isTTY = do
     colortermTruecolor <- hasEnvMatching env "COLORTERM" "truecolor"
     recognisedTermProgram <- isRecognisedTermProgram env
     colortermEnv <- inEnv env "COLORTERM"
-    isWin <- isWindows os
+    isWin <- isWindows osInfo
 
     if dumbTerm then return minLevel
-    else if isWin then windowsLevel os
+    else if isWin then windowsLevel osInfo
     else if ciEnv then return Basic
     else if teamcityEnv then teamcityLevel env
     else if tfBuildEnv && agentNameEnv then return Basic
@@ -191,7 +214,7 @@ newtype SysEnv = SysEnv ()
 
 instance EnvProvider SysEnv where
   getEnvOpt _ = lookupEnv
-  getEnv _ = SystemEnv.getEnv
+  --getEnv _ = SystemEnv.getEnv
 
 -- | System OS information provider
 newtype SysOSInfo = SysOSInfo ()
@@ -218,7 +241,7 @@ newtype MapEnv = MapEnv (Map.Map String String)
 
 instance EnvProvider MapEnv where
   getEnvOpt (MapEnv m) k = return $ Map.lookup k m
-  getEnv (MapEnv m) k = maybe (fail $ "Environment variable not found: " ++ k) return $ Map.lookup k m
+  -- getEnv (MapEnv m) k = maybe (fail $ "Environment variable not found: " ++ k) return $ Map.lookup k m
 
 -- | Create an OS info provider with custom values
 osInfoProviderOfValues :: Bool -> Maybe String -> Config

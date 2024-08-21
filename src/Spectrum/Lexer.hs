@@ -4,15 +4,18 @@ module Spectrum.Lexer
   , styleToANSI
   , colorNameMapping
   , tagToCode
+  , fgFromName
+  , bgFromName
+  , parseStyle
+  , parseStyleString
   ) where
 
 import Text.Parsec hiding ((<|>))
 import Text.Parsec.String (Parser)
 import Control.Applicative ((<|>))
-import Data.Either (Either(..))
 import qualified Data.Map as Map
-import Data.Char (isDigit, isAlpha, toLower)
-import Text.Printf (printf, PrintfArg)
+import Data.Char (toLower)
+import Text.Printf (printf)
 import Control.Monad (liftM2)
 import Data.Functor (($>))
 import Text.Read (readMaybe)
@@ -321,12 +324,12 @@ bgFromName name = case Map.lookup (map toLower name) colorNameMapping of
 hslToRgb :: Float -> Float -> Float -> (Float, Float, Float)
 hslToRgb h s l
   | s == 0    = (l, l, l)
-  | otherwise = (hue2rgb p q (h + 1/3),
-                 hue2rgb p q h,
-                 hue2rgb p q (h - 1/3))
+  | otherwise = (hue2rgb p' q' (h + 1/3),
+                 hue2rgb p' q' h,
+                 hue2rgb p' q' (h - 1/3))
   where
-    q = if l < 0.5 then l * (1 + s) else l + s - l * s
-    p = 2 * l - q
+    q' = if l < 0.5 then l * (1 + s) else l + s - l * s
+    p' = 2 * l - q'
     hue2rgb p q t
       | t < 0     = hue2rgb p q (t + 1)
       | t > 1     = hue2rgb p q (t - 1)
@@ -348,7 +351,7 @@ parseStyleString = styleToANSI <$> parseStyle
 
 parseHexColor :: Parser (Either LexerError String)
 parseHexColor = do
-  char '#'
+  _ <- char '#'
   hex <- count 3 hexDigit <|> count 6 hexDigit
   return . Right $ "2;" ++ colorFromHex hex
   where
@@ -359,9 +362,9 @@ parseHexColor = do
 
 parseRGBColor :: Parser (Either LexerError String)
 parseRGBColor = do
-  string "rgb" >> spaces >> char '('
+  _ <-string "rgb" >> spaces >> char '('
   rgb <- sepBy (spaces >> many1 digit <* spaces) (oneOf ",; ")
-  char ')'
+  _ <- char ')'
   return $ case mapM parseIntRGB rgb of
     Right [r, g, b] -> Right $ printf "2;%d;%d;%d" r g b
     _ -> Left $ InvalidRgbColor "Invalid RGB values"
@@ -378,11 +381,11 @@ parsePercentage s = case readMaybe s of
 
 parseHSLColor :: Parser (Either LexerError String)
 parseHSLColor = do
-  string "hsl" >> spaces >> char '('
+  _ <- string "hsl" >> spaces >> char '('
   h <- parseFloat =<< (spaces >> option "" (string "-") >> many1 digit)
   s <- parsePercentage =<< (spaces >> many1 digit <* optional (char '%'))
   l <- parsePercentage =<< (spaces >> many1 digit <* optional (char '%'))
-  char ')'
+  _ <- char ')'
   return $ liftM2 (\h' (s', l') -> let (r, g, b) = hslToRgb h' s' l'
                                    in printf "2;%d;%d;%d" (round (r * 255) :: Int) (round (g * 255) :: Int) (round (b * 255) :: Int))
                   h (liftM2 (,) s l)
@@ -397,8 +400,8 @@ parseQualifiedColor = do
   return $ fmap (qualifyColor qualifier) color
 
 parseTag :: Parser (Either LexerError String)
-parseTag = spaces >> (Right . styleToANSI <$> parseStyle <|> parseQualifiedColor)
-  where parseStyle = choice $ map (\s -> string (show s) $> s) [Bold .. Strikethrough]
+parseTag = spaces >> (Right . styleToANSI <$> parseStyleInner <|> parseQualifiedColor)
+  where parseStyleInner = choice $ map (\s -> string (show s) $> s) [Bold .. Strikethrough]
 
 parseTags :: Parser [Either LexerError String]
 parseTags = parseTag `sepBy` many1 (oneOf ", \t")

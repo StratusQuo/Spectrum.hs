@@ -26,7 +26,7 @@ dependencies:
 - parsec
 - containers
 - colour  # Change 'color' to 'colour'
-- regex-pcre  # Add this for PCRE support
+- regex-tdfa  # Add this for PCRE support
 - mtl  # Add this for monadic transformers
 - process
 

@@ -1,6 +1,7 @@
 module Main where
 
 import Spectrum.Spectrum
+import System.Environment (lookupEnv)
 import System.IO
 import Control.Monad (forM_)
 
@@ -15,7 +16,7 @@ main = do
   putStrLn $ green "Green text"
 
   -- Compound style tests
-  putStrLn $ green <> bold <> underline "Bold underlined green text"
+  putStrLn $ green (bold (underline "Bold underlined green text"))
   
   -- RGB color test
   putStrLn $ rgb 100 150 200 "Custom RGB color"
@@ -27,8 +28,8 @@ main = do
   putStrLn $ bgRed "Red background"
 
   -- Complex formatting test
-  let complexText = lightSteelBlue <> bold $ "Hello " <> underline "there" <> " you" <> " again " <> strikethrough "mate"
-  putStrLn $ simpleSprintf "pre %s @{<bg:red,#FFd833>warning@} post\n" complexText
+  let complexText = lightSteelBlue (bold (underline "Hello " ++ "there" ++ " you" ++ " again " ++ strikethrough "mate"))
+  putStrLn $ "pre " ++ complexText ++ " @{<bg:red,#FFd833>warning@} post\n"
 
   -- Test error handling (if implemented)
   putStrLn "Testing invalid color (should show an error or fallback):"
@@ -46,24 +47,25 @@ main = do
 
   putStrLn "\nTest complete!"
 
--- Helper functions (implement these in your Spectrum module if not already present)
-yellow, red, green, bold, underline, strikethrough, bgRed :: String -> String
-yellow = undefined  -- Implement these in your Spectrum module
-red = undefined
-green = undefined
-bold = undefined
-underline = undefined
-strikethrough = undefined
-bgRed = undefined
 
-rgb :: Int -> Int -> Int -> String -> String
-rgb = undefined
+-- -- Helper functions (implement these in your Spectrum module if not already present)
+-- yellow, red, green, bold, underline, strikethrough, bgRed :: String -> String
+-- yellow = id  -- Placeholder implementations
+-- red = id
+-- green = id
+-- bold = id
+-- underline = id
+-- strikethrough = id
+-- bgRed = id
 
-hex :: String -> String -> String
-hex = undefined
+-- rgb :: Int -> Int -> Int -> String -> String
+-- rgb _ _ _ = id
 
-lightSteelBlue :: String -> String
-lightSteelBlue = undefined
+-- hex :: String -> String -> String
+-- hex _ = id
 
-colorName :: String -> String -> String
-colorName = undefined
+-- lightSteelBlue :: String -> String
+-- lightSteelBlue = id
+
+-- colorName :: String -> String -> String
+-- colorName _ = id

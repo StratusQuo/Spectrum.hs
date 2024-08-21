@@ -8,17 +8,45 @@ module Spectrum.Spectrum
   , makePrinter
   , Exn
   , Noexn
+  , simpleSprintf
+  , yellow, red, green, bold, underline, strikethrough, bgRed
+  , rgb, hex, lightSteelBlue, colorName
+  , supportedColorLevel, defaultConfig
   ) where
 
 import Spectrum.Capabilities
 import Spectrum.Lexer
 import Data.List (intercalate)
 import System.IO
-import Control.Monad.State
-import Control.Exception (catch, throw)
-import Text.Printf (printf)
+import Control.Exception ()
+import Text.Printf (printf, PrintfType)
+import Data.IORef (newIORef, writeIORef, modifyIORef, readIORef)
+import Data.Char (toLower)
+import System.IO.Unsafe (unsafePerformIO)
 
-type ANSI = String
+-- ! PLACEHOLDERS ====================================================
+yellow, red, green, bold, underline, strikethrough, bgRed :: String -> String
+yellow = id  -- Placeholder implementations
+red = id
+green = id
+bold = id
+underline = id
+strikethrough = id
+bgRed = id
+
+rgb :: Int -> Int -> Int -> String -> String
+rgb _ _ _ = id
+
+hex :: String -> String -> String
+hex _ = id
+
+lightSteelBlue :: String -> String
+lightSteelBlue = id
+
+colorName :: String -> String -> String
+colorName _ = id
+
+-- ! =============================================================
 
 stackToEsc :: [String] -> String
 stackToEsc stack = "\ESC[" ++ intercalate ";" (reverse stack) ++ "m"
@@ -47,37 +75,41 @@ makePrinter raiseErrors = Printer {..}
       
       let updateStack f = modifyIORef ref f >> readIORef ref >>= hPutStr handle . stackToEsc
       
-      let markOpenTag tag = updateStack $ \stack ->
+      let _markOpenTag tag = updateStack $ \stack ->
             case tagToCode (map toLower tag) of
-              Right code -> code : stack
-              Left err   -> if raiseErrors then throw err else stack
+              Right codes -> codes ++ stack
+              Left err    -> if raiseErrors then error (show err) else stack
       
-      let markCloseTag _ = updateStack tail
+      let _markCloseTag _ = updateStack tail
       
       hSetEncoding handle utf8
       return reset
 
     simpleModule = SimpleModule {..}
       where
+        simplePrintf :: forall a. PrintfType a => String -> a
         simplePrintf format = unsafePerformIO $ do
           reset <- preparePPF stdout
           let result = printf format
+          putStr result
           reset
-          return result
+          return (printf format)  -- Return the result of printf directly
 
+        simpleEprintf :: forall a. PrintfType a => String -> a
         simpleEprintf format = unsafePerformIO $ do
           reset <- preparePPF stderr
-          let result = hPrintf stderr format
+          let result = printf format
+          hPutStr stderr result
           reset
-          return result
-
+          return (printf format)  -- Return the result of printf directly
+        simpleSprintf :: forall a. PrintfType a => String -> a
         simpleSprintf = printf
 
 type Exn = Printer
 type Noexn = Printer
 
-exn :: Exn
-exn = makePrinter True
+-- exn :: Exn
+-- exn = makePrinter True
 
-noexn :: Noexn
-noexn = makePrinter False
+-- noexn :: Noexn
+-- noexn = makePrinter False
