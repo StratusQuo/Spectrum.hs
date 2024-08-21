@@ -1,12 +1,14 @@
 module Spectrum.Lexer where
 
-import Text.Parsec
+import Text.Parsec hiding ((<|>))
 import Text.Parsec.String (Parser)
 import Control.Applicative ((<|>))
 import Data.Either (Either(..))
 import qualified Data.Map as Map
 import Data.Char (isDigit, isAlpha, toLower)
 import Text.Printf (printf)
+import Control.Monad (liftM2)
+import Data.Functor (($>))
 
 data Style = Bold | Dim | Italic | Underline | Blink | RapidBlink | Inverse | Hidden | Strikethrough
   deriving (Show, Eq)
@@ -295,65 +297,19 @@ colorNameMapping = Map.fromList
   , ("grey-93", "255")
   ]
 
+-- Helper function for qualified colors
+qualifyColor :: Maybe String -> String -> String
+qualifyColor (Just "bg:") c = "48;" ++ c
+qualifyColor _ c            = "38;" ++ c
+
 fgFromName, bgFromName :: String -> Either LexerError String
 fgFromName name = case Map.lookup (map toLower name) colorNameMapping of
   Just code -> Right $ "38;5;" ++ code
   Nothing -> Left $ InvalidColorName name
 
-parseStyle :: Parser String
-parseStyle = styleToANSI <$> 
-                choice $ map (\s -> try $ string (show s) >> return s) [Bold .. Strikethrough]
-
-parseHexColor :: Parser (Either LexerError String)
-parseHexColor = do
-  char '#'
-  hex <- count 3 hexDigit <|> count 6 hexDigit
-  return $ Right $ "2;" ++ colorFromHex hex
-  where
-    colorFromHex [r1,g1,b1] = printf "%d;%d;%d" (hex2dec r1 r1) (hex2dec g1 g1) (hex2dec b1 b1)
-    colorFromHex [r1,r2,g1,g2,b1,b2] = printf "%d;%d;%d" (hex2dec r1 r2) (hex2dec g1 g2) (hex2dec b1 b2)
-    colorFromHex _ = error "Invalid hex color"
-    hex2dec a b = read ['0','x',a,b] :: Int
-
-parseRGBColor :: Parser (Either LexerError String)
-parseRGBColor = do
-  string "rgb" >> spaces >> char '('
-  [r,g,b] <- sepBy (spaces >> many1 digit <* spaces) (oneOf ",; ")
-  char ')'
-  return $ case mapM parseIntRGB [r,g,b] of
-    Left err -> Left err
-    Right [r',g',b'] -> Right $ printf "2;%d;%d;%d" r' g' b'
-    _ -> Left $ InvalidRgbColor "Invalid RGB values"
-
-parseIntRGB :: String -> Either LexerError Int
-parseIntRGB s = case reads s of
-  [(i, "")] | i >= 0 && i < 256 -> Right i
-  _ -> Left $ InvalidRgbColor s
-
-parseHSLColor :: Parser (Either LexerError String)
-parseHSLColor = do
-  string "hsl" >> spaces >> char '('
-  h <- spaces >> option "" (string "-") >> many1 digit <* spaces
-  s <- many1 digit <* optional (char '%') <* spaces
-  l <- many1 digit <* optional (char '%') <* spaces
-  char ')'
-  return $ case (parseFloat h, parsePercentage s, parsePercentage l) of
-    (Right h', Right s', Right l') ->
-      let (r, g, b) = hslToRgb h' s' l'
-      in Right $ printf "2;%d;%d;%d" (round $ r * 255) (round $ g * 255) (round $ b * 255)
-    (Left err, _, _) -> Left err
-    (_, Left err, _) -> Left err
-    (_, _, Left err) -> Left err
-
-parseFloat :: String -> Either LexerError Float
-parseFloat s = case reads s of
-  [(f, "")] -> Right f
-  _ -> Left $ InvalidHslColor s
-
-parsePercentage :: String -> Either LexerError Float
-parsePercentage s = case reads s of
-  [(f, "")] | f >= 0 && f <= 100 -> Right (f / 100)
-  _ -> Left $ InvalidPercentage s
+bgFromName name = case Map.lookup (map toLower name) colorNameMapping of
+  Just code -> Right $ "48;5;" ++ code
+  Nothing -> Left $ InvalidColorName name
 
 hslToRgb :: Float -> Float -> Float -> (Float, Float, Float)
 hslToRgb h s l
@@ -372,29 +328,61 @@ hslToRgb h s l
       | t < 2/3   = p + (q - p) * (2/3 - t) * 6
       | otherwise = p
 
+parseIntRGB :: String -> Either LexerError Int
+parseIntRGB s = case reads s of
+  [(i, "")] | i >= 0 && i < 256 -> Right i
+  _ -> Left $ InvalidRgbColor s
+
+parseStyle :: Parser String
+parseStyle = styleToANSI <$> 
+                choice $ map (\s -> try $ string (show s) >> return s) [Bold .. Strikethrough]
+
+parseHexColor :: Parser (Either LexerError String)
+parseHexColor = do
+  char '#'
+  hex <- count 3 hexDigit <|> count 6 hexDigit
+  return . Right $ "2;" ++ colorFromHex hex
+  where
+    colorFromHex [r1,g1,b1] = printf "%d;%d;%d" (hex2dec r1 r1) (hex2dec g1 g1) (hex2dec b1 b1)
+    colorFromHex [r1,r2,g1,g2,b1,b2] = printf "%d;%d;%d" (hex2dec r1 r2) (hex2dec g1 g2) (hex2dec b1 b2)
+    colorFromHex _ = error "Invalid hex color"
+    hex2dec a b = read ['0','x',a,b] :: Int
+
+parseRGBColor :: Parser (Either LexerError String)
+parseRGBColor = do
+  string "rgb" >> spaces >> char '('
+  rgb <- sepBy (spaces >> many1 digit <* spaces) (oneOf ",; ")
+  char ')'
+  return $ case mapM parseIntRGB rgb of
+    Right [r, g, b] -> Right $ printf "2;%d;%d;%d" r g b
+    _ -> Left $ InvalidRgbColor "Invalid RGB values"
+
+parseHSLColor :: Parser (Either LexerError String)
+parseHSLColor = do
+  string "hsl" >> spaces >> char '('
+  h <- parseFloat =<< (spaces >> option "" (string "-") >> many1 digit)
+  s <- parsePercentage =<< (spaces >> many1 digit <* optional (char '%'))
+  l <- parsePercentage =<< (spaces >> many1 digit <* optional (char '%'))
+  char ')'
+  return $ liftM2 (\h' (s', l') -> let (r, g, b) = hslToRgb h' s' l'
+                                   in printf "2;%d;%d;%d" (round $ r * 255) (round $ g * 255) (round $ b * 255))
+                  h (liftM2 (,) s l)
+
 parseColorName :: Parser (Either LexerError String)
-parseColorName = do
-  name <- many1 (alphaNum <|> char '-')
-  return $ fgFromName name
+parseColorName = fgFromName <$> many1 (alphaNum <|> char '-')
 
 parseQualifiedColor :: Parser (Either LexerError String)
 parseQualifiedColor = do
   qualifier <- optionMaybe (try (string "fg:") <|> try (string "bg:"))
   color <- parseHexColor <|> parseRGBColor <|> parseHSLColor <|> parseColorName
-  return $ case (qualifier, color) of
-    (Just "bg:", Right c) -> Right $ "48;" ++ c
-    (Just "fg:", Right c) -> Right $ "38;" ++ c
-    (Nothing, Right c) -> Right $ "38;" ++ c
-    (Just q, _) -> Left $ InvalidQualifier q
-    (_, Left err) -> Left err
+  return $ fmap (qualifyColor qualifier) color
 
 parseTag :: Parser (Either LexerError String)
-parseTag = spaces >> (Right <$> parseStyle <|> parseQualifiedColor)
+parseTag = spaces >> (Right . styleToANSI <$> parseStyle <|> parseQualifiedColor)
+  where parseStyle = choice $ map (\s -> string (show s) $> s) [Bold .. Strikethrough]
 
 parseTags :: Parser [Either LexerError String]
-parseTags = sepBy parseTag (many1 $ oneOf ", \t")
+parseTags = parseTag `sepBy` many1 (oneOf ", \t")
 
 tagToCode :: String -> Either LexerError [String]
-tagToCode input = case parse parseTags "" input of
-  Left err -> Left $ InvalidTag (show err)
-  Right result -> sequence result
+tagToCode = either (Left . InvalidTag . show) sequence . parse parseTags ""

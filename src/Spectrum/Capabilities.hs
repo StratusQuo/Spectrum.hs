@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Spectrum.Capabilities where
 
 import Text.Regex.PCRE

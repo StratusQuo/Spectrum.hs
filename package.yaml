@@ -1,10 +1,10 @@
-name:                spectrum-hs
+name:                Spectrum
 version:             0.1.0.0
-github:              "githubuser/spectrum-hs"
-license:             BSD-3-Clause
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2024 Author name here"
+github:              "StratusQuo/spectrum"
+license:             MIT
+author:              "Chris C"
+maintainer:          "cchappellnyc@gmail.com"
+copyright:           "2024 Chris C"
 
 extra-source-files:
 - README.md
@@ -25,7 +25,10 @@ dependencies:
 - ansi-terminal
 - parsec
 - containers
-- color
+- colour  # Change 'color' to 'colour'
+- regex-pcre  # Add this for PCRE support
+- mtl  # Add this for monadic transformers
+- process
 
 ghc-options:
 - -Wall
@@ -50,7 +53,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - spectrum-hs
+    - Spectrum
 
 tests:
   spectrum-hs-test:
@@ -61,4 +64,6 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - spectrum-hs
+    - Spectrum
+    - hspec
+    - QuickCheck
