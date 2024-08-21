@@ -31,6 +31,7 @@ data NumericVersion = NumericVersion
   , minor :: Int
   , patch :: Int
   }
+  deriving (Show, Eq, Ord)
 
 -- | Environment provider interface
 class EnvProvider e where
