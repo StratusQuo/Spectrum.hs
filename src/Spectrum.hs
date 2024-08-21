@@ -1,71 +1,83 @@
-module Spectrum.Spectrum where
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RankNTypes #-}
+
+module Spectrum.Spectrum 
+  ( module Spectrum.Capabilities
+  , module Spectrum.Lexer
+  , Printer(..)
+  , makePrinter
+  , Exn
+  , Noexn
+  ) where
 
 import Spectrum.Capabilities
 import Spectrum.Lexer
-import Data.List
+import Data.List (intercalate)
 import System.IO
 import Control.Monad.State
+import Control.Exception (catch, throw)
+import Text.Printf (printf)
 
 type ANSI = String
 
-data Style = Bold
-           | Dim
-           | Italic
-           | Underline
-           | Blink
-           | RapidBlink
-           | Inverse
-           | Hidden
-           | Strikethrough
-  deriving (Show, Eq)
+stackToEsc :: [String] -> String
+stackToEsc stack = "\ESC[" ++ intercalate ";" (reverse stack) ++ "m"
 
-styleToANSI :: Style -> ANSI
-styleToANSI style =
-  case style of
-    Bold -> "1"
-    Dim -> "2"
-    Italic -> "3"
-    Underline -> "4"
-    Blink -> "5"
-    RapidBlink -> "5"
-    Inverse -> "7"
-    Hidden -> "8"
-    Strikethrough -> "9"
+data Printer = Printer
+  { preparePPF :: Handle -> IO (IO ())
+  , simpleModule :: SimpleModule
+  }
 
-colorToANSI :: String -> ANSI
-colorToANSI color =
-  case tagToCode color of
-    Right code -> "\ESC[" ++ code ++ "m"
-    Left _ -> "" -- Handle errors appropriately (e.g., logging or throwing an exception)
+data SimpleModule = SimpleModule
+  { simplePrintf :: forall a. PrintfType a => String -> a
+  , simpleEprintf :: forall a. PrintfType a => String -> a
+  , simpleSprintf :: forall a. PrintfType a => String -> a
+  }
 
-stackToANSI :: [ANSI] -> ANSI
-stackToANSI stack = "\ESC[" ++ intercalate ";" (reverse stack) ++ "m"
+makePrinter :: Bool -> Printer
+makePrinter raiseErrors = Printer {..}
+  where
+    preparePPF handle = do
+      let originalState = ["0"]  -- Start with reset code
+      ref <- newIORef originalState
+      let reset = do
+            writeIORef ref originalState
+            hPutStr handle (stackToEsc originalState)
+            hFlush handle
+      
+      let updateStack f = modifyIORef ref f >> readIORef ref >>= hPutStr handle . stackToEsc
+      
+      let markOpenTag tag = updateStack $ \stack ->
+            case tagToCode (map toLower tag) of
+              Right code -> code : stack
+              Left err   -> if raiseErrors then throw err else stack
+      
+      let markCloseTag _ = updateStack tail
+      
+      hSetEncoding handle utf8
+      return reset
 
-type PPFState = [ANSI]
+    simpleModule = SimpleModule {..}
+      where
+        simplePrintf format = unsafePerformIO $ do
+          reset <- preparePPF stdout
+          let result = printf format
+          reset
+          return result
 
-preparePPF :: Handle -> IO (IO ())
-preparePPF handle = do
-  -- Get initial state (empty stack)
-  let initialState = []
-  -- Run the stateful computation
-  let formattedOutput = (`execStateT` initialState) $ do
-        -- Print the initial reset code
-        liftIO $ hPutStr handle $ stackToANSI ["0"]
-        -- Return a reset function
-        return $ do
-          liftIO $ hPutStr handle $ stackToANSI ["0"]
-          liftIO $ hFlush handle
-  -- Return the reset function
-  return (snd formattedOutput)
+        simpleEprintf format = unsafePerformIO $ do
+          reset <- preparePPF stderr
+          let result = hPrintf stderr format
+          reset
+          return result
 
-simplePrintf :: String -> IO ()
-simplePrintf str = do
-  reset <- preparePPF stdout
-  putStr str
-  reset
+        simpleSprintf = printf
 
-simpleSprintf :: String -> String -> String
-simpleSprintf formatStr str =
-  let reset = preparePPF stdout
-      result = formatStr ++ str
-  in result ++ stackToANSI ["0"] -- Add reset code at the end
+type Exn = Printer
+type Noexn = Printer
+
+exn :: Exn
+exn = makePrinter True
+
+noexn :: Noexn
+noexn = makePrinter False

@@ -1,75 +1,97 @@
 module Spectrum.Capabilities where
 
 import Text.Regex.PCRE
-import Data.Maybe
-import System.Environment
-import System.Info
+import Data.Maybe (isJust, fromMaybe)
+import qualified Data.Map.Strict as Map
+import System.Environment (lookupEnv)
+import System.Info (os)
+import System.Process (readProcess)
 
+-- | Represents the level of color support
 data ColorLevel = Unsupported
                 | Basic
                 | EightBit
                 | TrueColor
   deriving (Show, Eq)
 
+-- | Information about color support for stdout and stderr
 data ColorLevelInfo = ColorLevelInfo
   { stdoutLevel :: ColorLevel
   , stderrLevel :: ColorLevel
   }
   deriving (Show)
 
+-- | Represents a numeric version
 data NumericVersion = NumericVersion
   { major :: Int
   , minor :: Int
   , patch :: Int
   }
 
-parseNumericVersion :: String -> NumericVersion
+-- | Environment provider interface
+class EnvProvider e where
+  getEnvOpt :: e -> String -> IO (Maybe String)
+  getEnv :: e -> String -> IO String
+
+-- | OS information provider interface
+class OSInfoProvider o where
+  isWindows :: o -> IO Bool
+  osVersion :: o -> IO (Maybe String)
+
+-- | Capabilities configuration
+data Config = forall e o. (EnvProvider e, OSInfoProvider o) => Config
+  { envProvider :: e
+  , osInfoProvider :: o
+  }
+
+-- | Parse a version string into a NumericVersion
+parseNumericVersion :: String -> Maybe NumericVersion
 parseNumericVersion s =
   case matchRegex (mkRegex "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)") s of
     Just [major, minor, patch] ->
-      NumericVersion { major = read major, minor = read minor, patch = read patch }
-    _ -> error "Invalid version string"
+      Just $ NumericVersion { major = read major, minor = read minor, patch = read patch }
+    _ -> Nothing
 
-envForceLevel :: IO (Maybe ColorLevel)
-envForceLevel = do
-  forceColor <- lookupEnv "FORCE_COLOR"
+-- | Get the forced color level from environment
+envForceLevel :: EnvProvider e => e -> IO (Maybe ColorLevel)
+envForceLevel e = do
+  forceColor <- getEnvOpt e "FORCE_COLOR"
   return $ case forceColor of
     Just "true" -> Just Basic
     Just "false" -> Just Unsupported
     Just s -> case reads s of
-      [(0, _)] -> Just Unsupported
-      [(1, _)] -> Just Basic
-      [(2, _)] -> Just EightBit
-      [(3, _)] -> Just TrueColor
+      [(0, "")] -> Just Unsupported
+      [(1, "")] -> Just Basic
+      [(2, "")] -> Just EightBit
+      [(3, "")] -> Just TrueColor
       _ -> Nothing
     Nothing -> Nothing
 
-inEnv :: String -> IO Bool
-inEnv name = isJust <$> lookupEnv name
+-- | Check if an environment variable exists
+inEnv :: EnvProvider e => e -> String -> IO Bool
+inEnv e name = isJust <$> getEnvOpt e name
 
-hasEnvMatching :: String -> String -> IO Bool
-hasEnvMatching name value = do
-  envVal <- lookupEnv name
+-- | Check if an environment variable matches a specific value
+hasEnvMatching :: EnvProvider e => e -> String -> String -> IO Bool
+hasEnvMatching e name value = do
+  envVal <- getEnvOpt e name
   return $ envVal == Just value
 
-windowsLevel :: IO ColorLevel
-windowsLevel = do
-  osVersion <- osVersionString
-  return $ case osVersion of
-    Just s ->
-      let v = parseNumericVersion s
-      in if v.major == 10 && v.minor == 0 && v.patch >= 14931
-         then TrueColor
-         else if v.major == 10 && v.minor == 0 && v.patch >= 10586
-         then EightBit
-         else if (v.major == 10 && v.minor > 0) || (v.major > 10)
-         then TrueColor
-         else Basic
-    Nothing -> Basic
+-- | Get the color level for Windows
+windowsLevel :: OSInfoProvider o => o -> IO ColorLevel
+windowsLevel o = do
+  osVersion <- osVersion o
+  return $ case osVersion >>= parseNumericVersion of
+    Just v | v.major == 10 && v.minor == 0 && v.patch >= 14931 -> TrueColor
+           | v.major == 10 && v.minor == 0 && v.patch >= 10586 -> EightBit
+           | v.major == 10 && v.minor > 0 -> TrueColor
+           | v.major > 10 -> TrueColor
+    _ -> Basic
 
-teamcityLevel :: IO ColorLevel
-teamcityLevel = do
-  teamcityVersion <- lookupEnv "TEAMCITY_VERSION"
+-- | Get the color level for TeamCity
+teamcityLevel :: EnvProvider e => e -> IO ColorLevel
+teamcityLevel e = do
+  teamcityVersion <- getEnvOpt e "TEAMCITY_VERSION"
   return $ case teamcityVersion of
     Just s ->
       if matchRegex (mkRegex "^(9\\.(0*[1-9]\\d*)\\.|\\d{2,}\\.)") s == Just []
@@ -77,94 +99,127 @@ teamcityLevel = do
       else Unsupported
     Nothing -> Unsupported
 
-isRecognisedTermProgram :: IO Bool
-isRecognisedTermProgram = do
-  termProgram <- lookupEnv "TERM_PROGRAM"
-  return $ case termProgram of
-    Just "iTerm.app" -> True
-    Just "Apple_Terminal" -> True
-    _ -> False
+-- | Check if the terminal program is recognized
+isRecognisedTermProgram :: EnvProvider e => e -> IO Bool
+isRecognisedTermProgram e = do
+  termProgram <- getEnvOpt e "TERM_PROGRAM"
+  return $ termProgram `elem` ["iTerm.app", "Apple_Terminal"]
 
-itermLevel :: IO ColorLevel
-itermLevel = do
-  termProgramVersion <- lookupEnv "TERM_PROGRAM_VERSION"
-  return $ case termProgramVersion of
-    Just s ->
-      let v = parseNumericVersion s
-      in if v.major >= 3
-         then TrueColor
-         else EightBit
-    Nothing -> EightBit
+-- | Get the color level for iTerm
+itermLevel :: EnvProvider e => e -> IO ColorLevel
+itermLevel e = do
+  termProgramVersion <- getEnvOpt e "TERM_PROGRAM_VERSION"
+  return $ case termProgramVersion >>= parseNumericVersion of
+    Just v | v.major >= 3 -> TrueColor
+    _ -> EightBit
 
-termProgramLevel :: IO ColorLevel
-termProgramLevel = do
-  termProgram <- lookupEnv "TERM_PROGRAM"
+-- | Get the color level based on the terminal program
+termProgramLevel :: EnvProvider e => e -> IO ColorLevel
+termProgramLevel e = do
+  termProgram <- getEnvOpt e "TERM_PROGRAM"
   case termProgram of
-    Just "iTerm.app" -> itermLevel
+    Just "iTerm.app" -> itermLevel e
     Just "Apple_Terminal" -> return EightBit
     _ -> return Unsupported
 
+-- | Check if the terminal supports 256 colors
 termIs256Color :: String -> Bool
-termIs256Color term = matchRegex (mkRegex "(?i)-256(color)?$") term == Just []
+termIs256Color term = isJust $ matchRegex (mkRegex "(?i)-256(color)?$") term
 
+-- | Check if the terminal supports 16 colors
 termIs16Color :: String -> Bool
-termIs16Color term = matchRegex (mkRegex "(?i)^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux") term == Just []
+termIs16Color term = isJust $ matchRegex (mkRegex "(?i)^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux") term
 
-supportedColorLevel :: Bool -> IO ColorLevel
-supportedColorLevel isTTY = do
-  forceLevel <- envForceLevel
+-- | List of CI environment variables to check
+ciEnvVars :: [String]
+ciEnvVars = ["TRAVIS", "CIRCLECI", "APPVEYOR", "GITLAB_CI", "GITHUB_ACTIONS", "BUILDKITE", "DRONE"]
+
+-- | Check if running in a CI environment
+isInCI :: EnvProvider e => e -> IO Bool
+isInCI e = or <$> sequence (map (inEnv e) ciEnvVars ++ [hasEnvMatching e "CI_NAME" "codeship"])
+
+-- | Get the supported color level
+supportedColorLevel :: Config -> Bool -> IO ColorLevel
+supportedColorLevel (Config env os) isTTY = do
+  forceLevel <- envForceLevel env
   let minLevel = fromMaybe Unsupported forceLevel
 
   if not isTTY && isNothing forceLevel
   then return Unsupported
   else do
-    dumbTerm <- hasEnvMatching "TERM" "dumb"
-    ciEnv <- inEnv "CI"
-    teamcityEnv <- inEnv "TEAMCITY_VERSION"
-    tfBuildEnv <- inEnv "TF_BUILD"
-    agentNameEnv <- inEnv "AGENT_NAME"
-    colortermTruecolor <- hasEnvMatching "COLORTERM" "truecolor"
-    recognisedTermProgram <- isRecognisedTermProgram
-    colortermEnv <- inEnv "COLORTERM"
+    dumbTerm <- hasEnvMatching env "TERM" "dumb"
+    ciEnv <- isInCI env
+    teamcityEnv <- inEnv env "TEAMCITY_VERSION"
+    tfBuildEnv <- inEnv env "TF_BUILD"
+    agentNameEnv <- inEnv env "AGENT_NAME"
+    colortermTruecolor <- hasEnvMatching env "COLORTERM" "truecolor"
+    recognisedTermProgram <- isRecognisedTermProgram env
+    colortermEnv <- inEnv env "COLORTERM"
+    isWin <- isWindows os
 
-    if dumbTerm
-    then return minLevel
-    else if isWindows
-    then windowsLevel
-    else if ciEnv
-    then do
-      travis <- inEnv "TRAVIS"
-      circleci <- inEnv "CIRCLECI"
-      appveyor <- inEnv "APPVEYOR"
-      gitlabCI <- inEnv "GITLAB_CI"
-      githubActions <- inEnv "GITHUB_ACTIONS"
-      buildkite <- inEnv "BUILDKITE"
-      drone <- inEnv "DRONE"
-      codeship <- hasEnvMatching "CI_NAME" "codeship"
-      if travis || circleci || appveyor || gitlabCI || githubActions || buildkite || drone || codeship
-      then return Basic
-      else return minLevel
-    else if teamcityEnv
-    then teamcityLevel
-    else if tfBuildEnv && agentNameEnv
-    then return Basic
-    else if colortermTruecolor
-    then return TrueColor
-    else if recognisedTermProgram
-    then termProgramLevel
+    if dumbTerm then return minLevel
+    else if isWin then windowsLevel os
+    else if ciEnv then return Basic
+    else if teamcityEnv then teamcityLevel env
+    else if tfBuildEnv && agentNameEnv then return Basic
+    else if colortermTruecolor then return TrueColor
+    else if recognisedTermProgram then termProgramLevel env
     else do
-    term <- lookupEnv "TERM"
-        case term of
+      term <- getEnvOpt env "TERM"
+      case term of
         Just t ->
-            if termIs256Color t
-            then return EightBit
-            else if termIs16Color t || colortermEnv
-            then return Basic
-            else return minLevel
+          if termIs256Color t then return EightBit
+          else if termIs16Color t || colortermEnv then return Basic
+          else return minLevel
         Nothing -> return minLevel
 
-supportedColorLevels :: IO ColorLevelInfo
-supportedColorLevels = do
-  stdoutLevel <- supportedColorLevel $ isTerminalDevice stdout
-  stderrLevel <- supportedColorLevel $ isTerminalDevice stderr
-  return $ ColorLevelInfo { stdoutLevel, stderrLevel }
+-- | Get the supported color levels for stdout and stderr
+supportedColorLevels :: Config -> IO ColorLevelInfo
+supportedColorLevels config = do
+  stdoutLevel <- supportedColorLevel config True -- Assuming stdout is TTY, adjust if needed
+  stderrLevel <- supportedColorLevel config True -- Assuming stderr is TTY, adjust if needed
+  return ColorLevelInfo {..}
+
+-- | System environment provider
+newtype SysEnv = SysEnv ()
+
+instance EnvProvider SysEnv where
+  getEnvOpt _ = lookupEnv
+  getEnv _ = getEnv
+
+-- | System OS information provider
+newtype SysOSInfo = SysOSInfo ()
+
+instance OSInfoProvider SysOSInfo where
+  isWindows _ = return $ os == "mingw32"
+  osVersion _ = case os of
+    "mingw32" -> Just <$> readProcess "cmd" ["/c", "ver"] ""
+    "darwin" -> Just <$> readProcess "sw_vers" ["-productVersion"] ""
+    "linux" -> Just <$> readProcess "uname" ["-r"] ""
+    _ -> return Nothing
+
+-- | Default system configuration
+defaultConfig :: Config
+defaultConfig = Config (SysEnv ()) (SysOSInfo ())
+
+-- Utility functions for testing
+
+-- | Create an environment provider from a Map
+envProviderOfMap :: Map.Map String String -> Config
+envProviderOfMap envMap = Config (MapEnv envMap) (SysOSInfo ())
+
+newtype MapEnv = MapEnv (Map.Map String String)
+
+instance EnvProvider MapEnv where
+  getEnvOpt (MapEnv m) k = return $ Map.lookup k m
+  getEnv (MapEnv m) k = maybe (fail $ "Environment variable not found: " ++ k) return $ Map.lookup k m
+
+-- | Create an OS info provider with custom values
+osInfoProviderOfValues :: Bool -> Maybe String -> Config
+osInfoProviderOfValues isWin osVer = Config (SysEnv ()) (CustomOSInfo isWin osVer)
+
+data CustomOSInfo = CustomOSInfo Bool (Maybe String)
+
+instance OSInfoProvider CustomOSInfo where
+  isWindows (CustomOSInfo isWin _) = return isWin
+  osVersion (CustomOSInfo _ osVer) = return osVer
