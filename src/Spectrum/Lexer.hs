@@ -9,6 +9,7 @@ import Data.Char (isDigit, isAlpha, toLower)
 import Text.Printf (printf)
 import Control.Monad (liftM2)
 import Data.Functor (($>))
+import Text.Read (readMaybe)
 
 data Style = Bold | Dim | Italic | Underline | Blink | RapidBlink | Inverse | Hidden | Strikethrough
   deriving (Show, Eq)
@@ -356,6 +357,16 @@ parseRGBColor = do
   return $ case mapM parseIntRGB rgb of
     Right [r, g, b] -> Right $ printf "2;%d;%d;%d" r g b
     _ -> Left $ InvalidRgbColor "Invalid RGB values"
+
+parseFloat :: String -> Parser (Either LexerError Float)
+parseFloat s = case readMaybe s of
+  Just f  -> return $ Right f
+  Nothing -> return $ Left $ InvalidHslColor s
+
+parsePercentage :: String -> Parser (Either LexerError Float)
+parsePercentage s = case readMaybe s of
+  Just p  -> return $ Right (p / 100)
+  Nothing -> return $ Left $ InvalidPercentage s
 
 parseHSLColor :: Parser (Either LexerError String)
 parseHSLColor = do
