@@ -334,9 +334,11 @@ parseIntRGB s = case reads s of
   [(i, "")] | i >= 0 && i < 256 -> Right i
   _ -> Left $ InvalidRgbColor s
 
-parseStyle :: Parser String
-parseStyle = styleToANSI <$> 
-                choice $ map (\s -> try $ string (show s) >> return s) [Bold .. Strikethrough]
+parseStyle :: Parser Style
+parseStyle = choice $ map (\s -> try $ string (show s) >> return s) [Bold .. Strikethrough]
+
+parseStyleString :: Parser String
+parseStyleString = styleToANSI <$> parseStyle
 
 parseHexColor :: Parser (Either LexerError String)
 parseHexColor = do

@@ -6,7 +6,7 @@ module Spectrum.Capabilities where
 import Text.Regex.PCRE
 import Data.Maybe (isJust, fromMaybe)
 import qualified Data.Map.Strict as Map
-import System.Environment (lookupEnv)
+import System.Environment (lookupEnv, getEnv)
 import System.Info (os)
 import System.Process (readProcess)
 
