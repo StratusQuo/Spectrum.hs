@@ -3,8 +3,8 @@
 
 module Spectrum.Capabilities where
 
-import Text.Regex.PCRE
-import Data.Maybe (isJust, fromMaybe)
+import Text.Regex.PCRE ((=~))
+import Data.Maybe (isJust, fromMaybe, isNothing)
 import qualified Data.Map.Strict as Map
 import System.Environment (lookupEnv)
 import qualified System.Environment as SystemEnv
@@ -51,8 +51,8 @@ data Config = forall e o. (EnvProvider e, OSInfoProvider o) => Config
 -- | Parse a version string into a NumericVersion
 parseNumericVersion :: String -> Maybe NumericVersion
 parseNumericVersion s =
-  case matchRegex (mkRegex "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)") s of
-    Just [major, minor, patch] ->
+  case s =~ "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)" :: Maybe (String, String, String, [(String, String)]) of
+    Just (_, _, _, [("major", major), ("minor", minor), ("patch", patch)]) ->
       Just $ NumericVersion { major = read major, minor = read minor, patch = read patch }
     _ -> Nothing
 
@@ -86,10 +86,10 @@ windowsLevel :: OSInfoProvider o => o -> IO ColorLevel
 windowsLevel o = do
   osVersion <- osVersion o
   return $ case osVersion >>= parseNumericVersion of
-    Just v | v.major == 10 && v.minor == 0 && v.patch >= 14931 -> TrueColor
-           | v.major == 10 && v.minor == 0 && v.patch >= 10586 -> EightBit
-           | v.major == 10 && v.minor > 0 -> TrueColor
-           | v.major > 10 -> TrueColor
+    Just v | major v == 10 && minor v == 0 && patch v >= 14931 -> TrueColor
+           | major v == 10 && minor v == 0 && patch v >= 10586 -> EightBit
+           | major v == 10 && minor v > 0 -> TrueColor
+           | major v > 10 -> TrueColor
     _ -> Basic
 
 -- | Get the color level for TeamCity
@@ -98,7 +98,7 @@ teamcityLevel e = do
   teamcityVersion <- getEnvOpt e "TEAMCITY_VERSION"
   return $ case teamcityVersion of
     Just s ->
-      if matchRegex (mkRegex "^(9\\.(0*[1-9]\\d*)\\.|\\d{2,}\\.)") s == Just []
+      if s =~ "^(9\\.(0*[1-9]\\d*)\\.|\\d{2,}\\.)$" :: Bool
       then Basic
       else Unsupported
     Nothing -> Unsupported
@@ -107,14 +107,14 @@ teamcityLevel e = do
 isRecognisedTermProgram :: EnvProvider e => e -> IO Bool
 isRecognisedTermProgram e = do
   termProgram <- getEnvOpt e "TERM_PROGRAM"
-  return $ termProgram `elem` ["iTerm.app", "Apple_Terminal"]
+  return $ termProgram `elem` [Just "iTerm.app", Just "Apple_Terminal"]
 
 -- | Get the color level for iTerm
 itermLevel :: EnvProvider e => e -> IO ColorLevel
 itermLevel e = do
   termProgramVersion <- getEnvOpt e "TERM_PROGRAM_VERSION"
   return $ case termProgramVersion >>= parseNumericVersion of
-    Just v | v.major >= 3 -> TrueColor
+    Just v | major v >= 3 -> TrueColor
     _ -> EightBit
 
 -- | Get the color level based on the terminal program
@@ -128,11 +128,11 @@ termProgramLevel e = do
 
 -- | Check if the terminal supports 256 colors
 termIs256Color :: String -> Bool
-termIs256Color term = isJust $ matchRegex (mkRegex "(?i)-256(color)?$") term
+termIs256Color term = term =~ "(?i)-256(color)?$" :: Bool
 
 -- | Check if the terminal supports 16 colors
 termIs16Color :: String -> Bool
-termIs16Color term = isJust $ matchRegex (mkRegex "(?i)^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux") term
+termIs16Color term = term =~ "(?i)^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux" :: Bool
 
 -- | List of CI environment variables to check
 ciEnvVars :: [String]

@@ -1,4 +1,10 @@
-module Spectrum.Lexer where
+module Spectrum.Lexer
+  ( Style(..)
+  , LexerError(..)
+  , styleToANSI
+  , colorNameMapping
+  , tagToCode
+  ) where
 
 import Text.Parsec hiding ((<|>))
 import Text.Parsec.String (Parser)
