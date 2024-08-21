@@ -6,7 +6,7 @@ module Spectrum.Capabilities where
 import Text.Regex.PCRE
 import Data.Maybe (isJust, fromMaybe)
 import qualified Data.Map.Strict as Map
-import System.Environment (lookupEnv, getEnv)
+import System.Environment (lookupEnv, getEnv as systemGetEnv)
 import System.Info (os)
 import System.Process (readProcess)
 
@@ -188,7 +188,7 @@ newtype SysEnv = SysEnv ()
 
 instance EnvProvider SysEnv where
   getEnvOpt _ = lookupEnv
-  getEnv _ = getEnv
+  getEnv _ = systemGetEnv
 
 -- | System OS information provider
 newtype SysOSInfo = SysOSInfo ()
