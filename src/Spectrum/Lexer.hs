@@ -6,7 +6,7 @@ import Control.Applicative ((<|>))
 import Data.Either (Either(..))
 import qualified Data.Map as Map
 import Data.Char (isDigit, isAlpha, toLower)
-import Text.Printf (printf)
+import Text.Printf (printf, PrintfArg)
 import Control.Monad (liftM2)
 import Data.Functor (($>))
 import Text.Read (readMaybe)
