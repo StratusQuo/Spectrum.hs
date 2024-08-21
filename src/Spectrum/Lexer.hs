@@ -12,7 +12,7 @@ import Data.Functor (($>))
 import Text.Read (readMaybe)
 
 data Style = Bold | Dim | Italic | Underline | Blink | RapidBlink | Inverse | Hidden | Strikethrough
-  deriving (Show, Eq)
+  deriving (Show, Eq, Enum)
 
 data LexerError
   = InvalidTag String
@@ -378,7 +378,7 @@ parseHSLColor = do
   l <- parsePercentage =<< (spaces >> many1 digit <* optional (char '%'))
   char ')'
   return $ liftM2 (\h' (s', l') -> let (r, g, b) = hslToRgb h' s' l'
-                                   in printf "2;%d;%d;%d" (round $ r * 255) (round $ g * 255) (round $ b * 255))
+                                   in printf "2;%d;%d;%d" (round (r * 255) :: Int) (round (g * 255) :: Int) (round (b * 255) :: Int))
                   h (liftM2 (,) s l)
 
 parseColorName :: Parser (Either LexerError String)
