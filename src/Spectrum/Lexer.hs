@@ -8,6 +8,7 @@ module Spectrum.Lexer
   , bgFromName
   , parseStyle
   , parseStyleString
+  , parseHexColor
   ) where
 
 import Text.Parsec hiding ((<|>))

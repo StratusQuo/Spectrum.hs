@@ -7,8 +7,9 @@ import Control.Monad (forM_)
 
 main :: IO ()
 main = do
-  putStrLn "Spectrum-HS Test Suite"
-  putStrLn "====================="
+  putStrLn "========================="
+  putStrLn " Spectrum-HS Test Suite "
+  putStrLn "========================="
 
   -- Basic color tests
   putStrLn $ yellow "Yellow text"
@@ -21,8 +22,9 @@ main = do
   putStrLn $ blue $ bold "This is bold blue text"
   putStrLn $ fromName "deep-sky-blue-4a" "This is deep sky blue text"
   putStrLn $ bgYellow $ black "Black text on yellow background"
-  putStrLn $ rgb 100 150 200 "Custom RGB color"
-  putStrLn $ hex "#FF5733" "Custom Hex color"
+  putStrLn $ white $ bgRed $ bold "Bold white text on a Red background"
+  putStrLn $ rgb 100 150 200 "Custom RGB color (Pale Blue)"
+  putStrLn $ hex "#FF9680" "Custom Hex color (Orange)"
 
   -- Compound style tests
   putStrLn $ green (bold (underline "Bold underlined green text"))
