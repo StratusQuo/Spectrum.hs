@@ -1,3 +1,7 @@
+-- ╭─────────────────────────────────────────────╮
+-- │ Capabilities.hs                             │  
+-- ╰─────────────────────────────────────────────╯
+
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE NamedFieldPuns #-}

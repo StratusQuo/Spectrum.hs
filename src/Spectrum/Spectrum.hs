@@ -10,9 +10,6 @@ module Spectrum.Spectrum
   , Exn
   , Noexn
   , simpleSprintf
-  -- ! Removed for now, so Spectrum.Colors can be tested:
-  -- , yellow, red, green, bold, underline, strikethrough, bgRed
-  -- , rgb, hex, lightSteelBlue, colorName
   ) where
 
 import Spectrum.Capabilities
@@ -25,30 +22,6 @@ import Text.Printf (printf, PrintfType)
 import Data.IORef (newIORef, writeIORef, modifyIORef, readIORef)
 import Data.Char (toLower)
 import System.IO.Unsafe (unsafePerformIO)
-
--- ! PLACEHOLDERS ====================================================
--- yellow, red, green, bold, underline, strikethrough, bgRed :: String -> String
--- yellow = id  -- Placeholder implementations
--- red = id
--- green = id
--- bold = id
--- underline = id
--- strikethrough = id
--- bgRed = id
-
--- rgb :: Int -> Int -> Int -> String -> String
--- rgb _ _ _ = id
-
--- hex :: String -> String -> String
--- hex _ = id
-
--- lightSteelBlue :: String -> String
--- lightSteelBlue = id
-
--- colorName :: String -> String -> String
--- colorName _ = id
-
--- ! =============================================================
 
 stackToEsc :: [String] -> String
 stackToEsc stack = "\ESC[" ++ intercalate ";" (reverse stack) ++ "m"
@@ -107,11 +80,6 @@ makePrinter raiseErrors = Printer {..}
         simpleSprintf :: forall a. PrintfType a => String -> a
         simpleSprintf = printf
 
+-- ! Need to refine these at some point:
 type Exn = Printer
 type Noexn = Printer
-
--- exn :: Exn
--- exn = makePrinter True
-
--- noexn :: Noexn
--- noexn = makePrinter False
