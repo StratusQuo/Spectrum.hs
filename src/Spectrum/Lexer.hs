@@ -21,7 +21,17 @@ import Control.Monad (liftM2)
 import Data.Functor (($>))
 import Text.Read (readMaybe)
 
-data Style = Bold | Dim | Italic | Underline | Blink | RapidBlink | Inverse | Hidden | Strikethrough
+data Style 
+  = Bold 
+  | Dim 
+  | Italic 
+  | Underline 
+  | Blink 
+  | RapidBlink 
+  | Inverse 
+  | Hidden 
+  | Strikethrough 
+  | DoubleUnderline
   deriving (Show, Eq, Enum)
 
 data LexerError
@@ -46,6 +56,8 @@ styleToANSI style = case style of
   Inverse -> "7"
   Hidden -> "8"
   Strikethrough -> "9"
+  -- ! Experimental:
+  DoubleUnderline -> "21"
 
 -- Extensive color name mapping (truncated for brevity)
 colorNameMapping :: Map.Map String String
@@ -345,7 +357,7 @@ parseIntRGB s = case reads s of
   _ -> Left $ InvalidRgbColor s
 
 parseStyle :: Parser Style
-parseStyle = choice $ map (\s -> try $ string (show s) >> return s) [Bold .. Strikethrough]
+parseStyle = choice $ map (\s -> try $ string (show s) >> return s) [Bold .. DoubleUnderline]
 
 parseStyleString :: Parser String
 parseStyleString = styleToANSI <$> parseStyle

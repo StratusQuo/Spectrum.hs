@@ -48,8 +48,9 @@ main = do
   putStrLn $ green $ underline "Green Underline Text"
   putStrLn $ blue $ blink "Blue Blinking Text"
   putStrLn $ rgb 100 150 200 $ rapidBlink "Pale Blue Rapidly Blinking Text"
-  putStrLn $ magenta $ inverse "Reverse Magenta Text"
+  putStrLn $ green $ inverse "Inverse Green Text"
   putStrLn $ cyan $ strikethrough "Strikethrough Cyan Text"
+  putStrLn $ blue $ doubleUnderline "Double Underlined Blue Text"
 
   putStrLn "\n"
   putStrLn "========================="

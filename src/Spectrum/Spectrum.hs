@@ -27,26 +27,26 @@ import Data.Char (toLower)
 import System.IO.Unsafe (unsafePerformIO)
 
 -- ! PLACEHOLDERS ====================================================
-yellow, red, green, bold, underline, strikethrough, bgRed :: String -> String
-yellow = id  -- Placeholder implementations
-red = id
-green = id
-bold = id
-underline = id
-strikethrough = id
-bgRed = id
+-- yellow, red, green, bold, underline, strikethrough, bgRed :: String -> String
+-- yellow = id  -- Placeholder implementations
+-- red = id
+-- green = id
+-- bold = id
+-- underline = id
+-- strikethrough = id
+-- bgRed = id
 
-rgb :: Int -> Int -> Int -> String -> String
-rgb _ _ _ = id
+-- rgb :: Int -> Int -> Int -> String -> String
+-- rgb _ _ _ = id
 
-hex :: String -> String -> String
-hex _ = id
+-- hex :: String -> String -> String
+-- hex _ = id
 
-lightSteelBlue :: String -> String
-lightSteelBlue = id
+-- lightSteelBlue :: String -> String
+-- lightSteelBlue = id
 
-colorName :: String -> String -> String
-colorName _ = id
+-- colorName :: String -> String -> String
+-- colorName _ = id
 
 -- ! =============================================================
 
