@@ -364,7 +364,7 @@ parseStyleString = styleToANSI <$> parseStyle
 
 parseHexColor :: Parser (Either LexerError String)
 parseHexColor = do
-  _ <- char '#'
+  _ <- optional (char '#') -- | Parse the Hex Digit whether there's a pound sign or not.
   hex <- count 3 hexDigit <|> count 6 hexDigit
   return . Right $ "2;" ++ colorFromHex hex
   where

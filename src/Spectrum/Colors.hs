@@ -97,6 +97,7 @@ hex :: String -> String -> String
 hex hexCode = applyColor $ \_ -> case parse parseHexColor "" hexCode of
     Left err -> Left $ InvalidHexColor (show err)
     Right (Right code) -> Right $ "38;" ++ code
+    --Right (Right code) -> Right $ "38;2" ++ code
     Right (Left err) -> Left err
 
 colorName :: String -> String -> String

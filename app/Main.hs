@@ -26,7 +26,7 @@ main = do
   putStrLn $ bgYellow $ black "Black text on yellow background"
   putStrLn $ white $ bgRed $ bold "Bold white text on a Red background"
   putStrLn $ rgb 100 150 200 "Custom RGB color (Pale Blue)"
-  putStrLn $ hex "#FF9680" "Custom Hex color (Orange)"
+  putStrLn $ hex "FF9680" "Custom Hex color (Orange)"
   -- Compound style tests
   putStrLn $ green (bold (underline "Bold underlined green text"))
   -- RGB color test
