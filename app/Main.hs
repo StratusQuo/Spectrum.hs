@@ -7,9 +7,11 @@ import Control.Monad (forM_)
 
 main :: IO ()
 main = do
-  putStrLn "========================="
-  putStrLn " Spectrum-HS Test Suite "
-  putStrLn "========================="
+  putStrLn "\n"
+  putStrLn "=========================="
+  putStrLn "  Spectrum-HS Test Suite  "
+  putStrLn "=========================="
+  putStrLn "\n"
 
   -- Basic color tests
   putStrLn $ yellow "Yellow text"
@@ -25,25 +27,45 @@ main = do
   putStrLn $ white $ bgRed $ bold "Bold white text on a Red background"
   putStrLn $ rgb 100 150 200 "Custom RGB color (Pale Blue)"
   putStrLn $ hex "#FF9680" "Custom Hex color (Orange)"
-
   -- Compound style tests
   putStrLn $ green (bold (underline "Bold underlined green text"))
-  
   -- RGB color test
-  putStrLn $ rgb 100 150 200 "Custom RGB color"
-
+  putStrLn $ rgb 100 150 100 "Custom RGB color (lighter blue)"
   -- Hex color test
-  putStrLn $ hex "#FF5733" "Custom Hex color"
-
+  putStrLn $ hex "#FF5733" "Custom Hex color (Deeper Orange)"
   -- Background color test
   putStrLn $ bgRed "Red background"
 
-  -- Complex formatting test
-  let complexText = lightSteelBlue (bold (underline "Hello " ++ "there" ++ " you" ++ " again " ++ strikethrough "mate"))
-  putStrLn $ "pre " ++ complexText ++ " @{<bg:red,#FFd833>warning@} post\n"
+  putStrLn "\n"
+  putStrLn "========================="
+  putStrLn "       Style Test        "
+  putStrLn "========================="
+  putStrLn "\n"
+
+  putStrLn $ red $ bold "Bold Red Text"
+  putStrLn $ red $ dim "Dim Red Text"
+  putStrLn $ yellow $ italic "Yellow Italic Text"
+  putStrLn $ green $ underline "Green Underline Text"
+  putStrLn $ blue $ blink "Blue Blinking Text"
+  putStrLn $ rgb 100 150 200 $ rapidBlink "Pale Blue Rapidly Blinking Text"
+  putStrLn $ magenta $ inverse "Reverse Magenta Text"
+  putStrLn $ cyan $ strikethrough "Strikethrough Cyan Text"
+
+  putStrLn "\n"
+  putStrLn "========================="
+  putStrLn " Complex Formatting Test "
+  putStrLn "========================="
+  putStrLn "\n"
+  let complexText = lightSteelBlue (bold (underline "Hello " ++ "there," ++ " you" ++ " again " ++ strikethrough "mate?"))
+  putStrLn $ "No Color -- " ++ complexText ++ "\n @{<bg:red,#FFd833>warning@} After\n"
 
   -- Test error handling (if implemented)
-  putStrLn "Testing invalid color (should show an error or fallback):"
+  putStrLn "\n"
+  putStrLn "========================="
+  putStrLn "   Error Handling Test   "
+  putStrLn "========================="
+  putStrLn "\n"
+  putStrLn "Testing invalid color (should show an error or fallback):\n"
   putStrLn $ colorName "invalid-color" "This should handle the error gracefully"
 
   -- Test color level detection
@@ -51,7 +73,7 @@ main = do
   putStrLn $ "Detected color support level: " ++ show colorLevel
 
   -- Test environment variable effects
-  putStrLn "\nTesting environment variable effects:"
+  putStrLn "\nTesting environment variable effects:\n"
   forM_ ["FORCE_COLOR", "NO_COLOR", "TERM", "COLORTERM"] $ \envVar -> do
     value <- lookupEnv envVar
     putStrLn $ envVar ++ ": " ++ show value
@@ -59,7 +81,11 @@ main = do
   putStrLn "\nTest complete!"
 
 
--- -- Helper functions (implement these in your Spectrum module if not already present)
+
+
+
+
+-- -- Helper functions
 -- yellow, red, green, bold, underline, strikethrough, bgRed :: String -> String
 -- yellow = id  -- Placeholder implementations
 -- red = id
