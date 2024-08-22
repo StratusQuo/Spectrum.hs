@@ -5,10 +5,10 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           Spectrum
-version:        0.1.0.0
+version:        0.1.2.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/spectrum-hs#readme>
-homepage:       https://github.com/StratusQuo/spectrum#readme
-bug-reports:    https://github.com/StratusQuo/spectrum/issues
+homepage:       https://github.com/StratusQuo/Spectrum.hs#readme
+bug-reports:    https://github.com/StratusQuo/Spectrum.hs/issues
 author:         Chris C
 maintainer:     cchappellnyc@gmail.com
 copyright:      2024 Chris C
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/StratusQuo/spectrum
+  location: https://github.com/StratusQuo/Spectrum.hs
 
 library
   exposed-modules:
@@ -39,6 +39,7 @@ library
     , base >=4.7 && <5
     , colour
     , containers
+    , flow
     , mtl
     , parsec
     , process
@@ -59,6 +60,7 @@ executable spectrum-hs-exe
     , base >=4.7 && <5
     , colour
     , containers
+    , flow
     , mtl
     , parsec
     , process
@@ -81,6 +83,7 @@ test-suite spectrum-hs-test
     , base >=4.7 && <5
     , colour
     , containers
+    , flow
     , hspec
     , mtl
     , parsec

@@ -1,6 +1,6 @@
 name:                Spectrum
-version:             0.1.0.0
-github:              "StratusQuo/spectrum"
+version:             0.1.2.0
+github:              "StratusQuo/Spectrum.hs"
 license:             MIT
 author:              "Chris C"
 maintainer:          "cchappellnyc@gmail.com"
@@ -22,6 +22,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - text
+- flow
 - ansi-terminal
 - parsec
 - containers

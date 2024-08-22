@@ -1,3 +1,7 @@
+-- ╭─────────────────────────────────────────────╮
+-- │ Main (Mostly for Sanity Testing)            │  
+-- ╰─────────────────────────────────────────────╯
+
 module Main where
 
 import Spectrum.Spectrum
@@ -5,6 +9,15 @@ import System.Environment (lookupEnv)
 import System.IO
 import Control.Monad (forM_)
 
+-- | Making "|>" an alias for "$" to test a few things out
+-- | and hopefully make things a bit more readable:
+infixr 0 |>
+(|>) :: (a -> b) -> a -> b
+(|>) = ($)
+
+
+-- | Sanity Tests:
+ 
 main :: IO ()
 main = do
   putStrLn "\n"
@@ -30,7 +43,7 @@ main = do
   -- Compound style tests
   putStrLn $ green (bold (underline "Bold underlined green text"))
   -- RGB color test
-  putStrLn $ rgb 100 150 100 "Custom RGB color (lighter blue)"
+  putStrLn $ rgb 100 150 200 "Custom RGB color (lighter blue)"
   -- Hex color test
   putStrLn $ hex "#FF5733" "Custom Hex color (Deeper Orange)"
   -- Background color test
@@ -49,15 +62,40 @@ main = do
   putStrLn $ blue $ blink "Blue Blinking Text"
   putStrLn $ rgb 100 150 200 $ rapidBlink "Pale Blue Rapidly Blinking Text"
   putStrLn $ green $ inverse "Inverse Green Text"
-  putStrLn $ cyan $ strikethrough "Strikethrough Cyan Text"
+  -- What happens if we put a pipe operator here....
+  putStrLn |> cyan |> strikethrough "Strikethrough Cyan Text"
+  putStrLn $ cyan "Regular Cyan Text"
   putStrLn $ blue $ doubleUnderline "Double Underlined Blue Text"
+
+  putStrLn "\n"
+  putStrLn "========================="
+  putStrLn "   256-Color Test        "
+  putStrLn "========================="
+  putStrLn "\n"
+
+  putStrLn $ red $ bold "Red Text" 
+  putStrLn $ yellow $ bold "Yellow Text" 
+  putStrLn $ green $ bold "Green Text"
+  putStrLn $ maroon $ bold "Maroon Text"
+  putStrLn $ olive $ bold "Olive Text" 
+  putStrLn $ purple $ bold "Purple Text"
+  putStrLn $ teal $ bold "Teal Text"
+  putStrLn $ silver $ bold "White Text" 
+  putStrLn $ grey $ bold "Grey Text"
+  putStrLn $ lime $ bold "Lime Text"
+  putStrLn $ blue $ bold "Blue Text"
+  putStrLn $ fuchsia $ bold "Fucshia Text" 
+  putStrLn $ cyan $ bold "Cyan Text"
+  putStrLn $ magenta $ bold "Magenta Text"
+
+
 
   putStrLn "\n"
   putStrLn "========================="
   putStrLn " Complex Formatting Test "
   putStrLn "========================="
   putStrLn "\n"
-  let complexText = lightSteelBlue (bold (underline "Hello " ++ "there," ++ " you" ++ " again " ++ strikethrough "mate?"))
+  let complexText = lightSteelBlue (bold (underline "Hello" ++ " there," ++ " you" ++ " again " ++ strikethrough "mate?"))
   putStrLn $ "No Color -- " ++ complexText ++ "\n @{<bg:red,#FFd833>warning@} After\n"
 
   -- Test error handling (if implemented)
@@ -80,30 +118,3 @@ main = do
     putStrLn $ envVar ++ ": " ++ show value
 
   putStrLn "\nTest complete!"
-
-
-
-
-
-
--- -- Helper functions
--- yellow, red, green, bold, underline, strikethrough, bgRed :: String -> String
--- yellow = id  -- Placeholder implementations
--- red = id
--- green = id
--- bold = id
--- underline = id
--- strikethrough = id
--- bgRed = id
-
--- rgb :: Int -> Int -> Int -> String -> String
--- rgb _ _ _ = id
-
--- hex :: String -> String -> String
--- hex _ = id
-
--- lightSteelBlue :: String -> String
--- lightSteelBlue = id
-
--- colorName :: String -> String -> String
--- colorName _ = id
