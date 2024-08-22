@@ -1,10 +1,10 @@
 # Spectrum.hs 🎨
 ### _Colorful Terminal Output in Haskell (Work in Progress)_
 
-![2024-08-22_11-00-37 (1)](https://github.com/user-attachments/assets/e4308a50-784e-4009-917f-af317b7a4450)
+![Wezterm Output](https://github.com/user-attachments/assets/e4308a50-784e-4009-917f-af317b7a4450)
 
 
-This library provides a simple way to add color and style to your Haskell terminal output. It's a port of the OCaml [Spectrum](https://ocaml.org/p/spectrum/0.6.0) library.
+Spectrum gives you a simple way to add color and style to your Haskell terminal output. It's a port of the OCaml [Spectrum](https://ocaml.org/p/spectrum/0.6.0) library.
 
 It's still under development and considered **experimental** at the moment, so expect breaking changes for the next few releases.
 * That said, feel free to experiment with it and contribute _(I can use the extra hands)_!
